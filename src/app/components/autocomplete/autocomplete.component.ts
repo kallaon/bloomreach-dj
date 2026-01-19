@@ -4,7 +4,7 @@ import { AutoCompleteCompleteEvent, AutoCompleteModule } from 'primeng/autocompl
 @Component({
   selector: 'app-autocomplete',
   imports: [AutoCompleteModule],
-  templateUrl: './autocomplete.html',
+  templateUrl: './autocomplete.component.html',
 })
 export class Autocomplete {
   @Input() showClear: boolean = true;

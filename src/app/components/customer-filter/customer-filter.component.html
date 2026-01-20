@@ -9,6 +9,7 @@
             <i class="pi pi-pencil"></i>
           </h5>
         </div>
+
         <div class="col-auto">
           <p-button
             icon="pi pi-trash"
@@ -18,9 +19,16 @@
             (onClick)="onRemove($index)"
             [disabled]="formArray.length === 1"
           />
-          <p-button icon="pi pi-clone" aria-label="Save" severity="secondary" />
+
+          <p-button
+            icon="pi pi-clone"
+            aria-label="Save"
+            severity="secondary"
+            (onClick)="onClone($index)"
+          />
         </div>
       </div>
+
       <div class="row mb-3" [formGroup]="control">
         <div class="col-lg-2 col-md-2 col-sm-12 mb-2">
           <app-select-filter
@@ -59,16 +67,18 @@
 
       <p-divider />
 
-      <div class="row mb-2">
-        <div class="col text-center">
-          <p-button
-            icon="pi pi-plus"
-            label="Add funnel list"
-            (onClick)="onAdd()"
-            link
-          />
+      @if ($last) {
+        <div class="row mb-2">
+          <div class="col text-center">
+            <p-button
+              icon="pi pi-plus"
+              label="Add funnel list"
+              (onClick)="onAdd()"
+              link
+            />
+          </div>
         </div>
-      </div>
+      }
     }
   </p-card>
 

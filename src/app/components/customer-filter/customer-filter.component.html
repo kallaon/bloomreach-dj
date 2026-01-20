@@ -1,5 +1,19 @@
 <form>
   @for (control of formArray.controls; track $index) {
+    <div class="row justify-content-between mb-2">
+      <div class="col-auto">
+        <h5>
+          {{ $index + 1 }}. Step:
+          {{ control.get('type')?.value || 'Unnamed step' }}
+          <i class="pi pi-pencil"></i>
+        </h5>
+      </div>
+      <div class="col-auto">
+        <h5>
+          <i class="pi pi-clone"></i>
+        </h5>
+      </div>
+    </div>
     <div class="row mb-3" [formGroup]="control">
       <div class="col-2">
         <app-select-filter
@@ -16,7 +30,8 @@
           />
         } @else {
           <p-button
-            label="+ Add an event attribute"
+            icon="pi pi-plus"
+            label="Add an event attribute"
             link
             (onClick)="onShowPropertySelector($index)"
             class="w-100"

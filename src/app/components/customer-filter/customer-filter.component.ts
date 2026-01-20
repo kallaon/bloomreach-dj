@@ -1,4 +1,11 @@
-import { Component, inject, OnDestroy, OnInit, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  inject,
+  OnDestroy,
+  OnInit,
+  signal,
+} from '@angular/core';
 import {
   FormArray,
   FormControl,
@@ -21,6 +28,7 @@ import { SelectFilterComponent } from '../select-filter/select-filter.component'
 
 @Component({
   selector: 'app-customer-filter',
+  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     ReactiveFormsModule,
     ButtonModule,
@@ -32,45 +40,51 @@ import { SelectFilterComponent } from '../select-filter/select-filter.component'
   templateUrl: './customer-filter.component.html',
 })
 export class CustomerFilter implements OnInit, OnDestroy {
-  protected eventData = signal<Event[]>([]);
   protected eventTypeSuggestions = signal<TypeSuggestion[]>([]);
-
-  // hlavný FormArray obsahujúci všetky filter kroky
   protected formArray = new FormArray<FormGroup>([]);
 
-  // cache pre property suggestions podľa event type
+  private _eventData = signal<Event[]>([]);
   private _propertyOptionsByType = new Map<string, PropertySuggestion[]>();
-
+  private _formGroupDestroys: Subject<void>[] = [];
   private readonly _dataService = inject(DataService);
   private readonly _destroy$ = new Subject<void>();
 
   ngOnInit() {
-    this._loadAutocompleteData();
+    this._loadDataAndMapItems();
     this.onAdd();
   }
 
   ngOnDestroy() {
+    this._formGroupDestroys.forEach((destroy$) => {
+      destroy$.next();
+      destroy$.complete();
+    });
+    this._formGroupDestroys = [];
+
     this._destroy$.next();
     this._destroy$.complete();
   }
 
-  // vráti property suggestions pre daný event type
+  // da mi property hodnoty na zaklade event hodnoty
   getPropertySuggestions(eventType: string): PropertySuggestion[] {
     return this._propertyOptionsByType.get(eventType) || [];
   }
 
-  // pridá nový filter step (event type + jeho properties)
+  // vytvorí nový FG k tomu destroyer a lsitener +  push do pola
   onAdd() {
     const filterGroup = new FormGroup({
       type: new FormControl(),
       properties: new FormArray<FormGroup>([]),
     });
 
-    this.setupTypeListener(filterGroup);
+    const destroy$ = new Subject<void>();
+    this._formGroupDestroys.push(destroy$);
+
+    this._setupTypeListener(filterGroup, destroy$);
     this.formArray.push(filterGroup);
   }
 
-  // pridá nový property filter do existujúceho stepu
+  // pridá property/compare  filter do existujúceho stepu
   onAddProperty(stepIndex: number) {
     const step = this.formArray.at(stepIndex);
     const propertiesArray = step.get('properties') as FormArray;
@@ -90,8 +104,20 @@ export class CustomerFilter implements OnInit, OnDestroy {
     propertiesArray.removeAt(propertyIndex);
   }
 
-  // odstráni celý filter step
+  // odstráni celý step - row
   onRemove(index: number) {
+    if (this.formArray.length <= 1) {
+      return;
+    }
+
+    // del na memory leak
+    const destroy$ = this._formGroupDestroys[index];
+    if (destroy$) {
+      destroy$.next();
+      destroy$.complete();
+    }
+
+    this._formGroupDestroys.splice(index, 1);
     this.formArray.removeAt(index);
   }
 
@@ -100,13 +126,12 @@ export class CustomerFilter implements OnInit, OnDestroy {
     const controlToClone = this.formArray.at(index);
     const clonedValue = controlToClone.value;
 
-    // vytvor nový FormGroup s rovnakými hodnotami
     const newFormGroup = new FormGroup({
       type: new FormControl(clonedValue.type),
       properties: new FormArray<FormGroup>([]),
     });
 
-    // naklonuj všetky property filtre
+    // property filtre
     clonedValue.properties?.forEach((prop: any) => {
       const propertyGroup = new FormGroup({
         property: new FormControl(prop.property),
@@ -115,9 +140,13 @@ export class CustomerFilter implements OnInit, OnDestroy {
       (newFormGroup.get('properties') as FormArray).push(propertyGroup);
     });
 
-    // setup listener pre type changes a vlož za originál
-    this.setupTypeListener(newFormGroup);
-    this.formArray.insert(index + 1, newFormGroup);
+    const newIndex = index + 1;
+
+    const destroy$ = new Subject<void>();
+    this._formGroupDestroys.splice(newIndex, 0, destroy$);
+
+    this._setupTypeListener(newFormGroup, destroy$);
+    this.formArray.insert(newIndex, newFormGroup);
   }
 
   // handler pre submit - zatiaľ len loguje do konzoly
@@ -131,43 +160,50 @@ export class CustomerFilter implements OnInit, OnDestroy {
   }
 
   // nastaví listener na zmenu event type ak sa zmeni tak premazem property
-  private setupTypeListener(formGroup: FormGroup) {
+  private _setupTypeListener(formGroup: FormGroup, destroy$: Subject<void>) {
     formGroup
       .get('type')
-      ?.valueChanges.pipe(distinctUntilChanged(), takeUntil(this._destroy$))
+      ?.valueChanges.pipe(
+        distinctUntilChanged(),
+        takeUntil(destroy$),
+        takeUntil(this._destroy$),
+      )
       .subscribe((eventType) => {
         const propertiesArray = formGroup.get('properties') as FormArray;
 
-        // ak user vymaže type, vyčistí všetky property filtre
         if (!eventType) {
           propertiesArray.clear();
         }
       });
   }
 
-  // načíta autocomplete dáta z JSON súboru
-  private _loadAutocompleteData() {
+  // načíta data a spraví mapping
+  private _loadDataAndMapItems() {
     this._dataService
       .getData<EventsResponse>('customer-events/events.json')
       .pipe(take(1))
       .subscribe((data) => {
-        this.eventData.set(data.events);
+        this._eventData.set(data.events);
 
-        // vytvor unikátne event type suggestions
-        this.eventTypeSuggestions.set(
-          [...new Set(data.events.map((e) => e.type))].map((type) => ({
-            value: type,
-          })),
-        );
+        const typeSet = new Set<string>();
 
-        // vytvor property suggestions cache pre každý event type
         data.events.forEach((event) => {
-          const suggestions = event.properties.map((prop) => ({
-            value: prop.property,
-            label: prop.property,
-          }));
-          this._propertyOptionsByType.set(event.type, suggestions);
+          typeSet.add(event.type);
+
+          // k property suggestions pre tento typ ešte neni - pridaj
+          if (!this._propertyOptionsByType.has(event.type)) {
+            debugger;
+            const suggestions = event.properties.map((prop) => ({
+              value: prop.property,
+              label: prop.property,
+            }));
+            this._propertyOptionsByType.set(event.type, suggestions);
+          }
         });
+
+        this.eventTypeSuggestions.set(
+          Array.from(typeSet).map((type) => ({ value: type })),
+        );
       });
   }
 }

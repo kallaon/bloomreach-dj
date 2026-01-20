@@ -1,66 +1,86 @@
 <form>
-  @for (control of formArray.controls; track $index) {
-    <div class="row justify-content-between mb-2">
-      <div class="col-auto">
-        <h5>
-          {{ $index + 1 }}. Step:
-          {{ control.get('type')?.value || 'Unnamed step' }}
-          <i class="pi pi-pencil"></i>
-        </h5>
-      </div>
-      <div class="col-auto">
-        <h5>
-          <i class="pi pi-clone"></i>
-        </h5>
-      </div>
-    </div>
-    <div class="row mb-3" [formGroup]="control">
-      <div class="col-2">
-        <app-select-filter
-          [options]="eventTypeSuggestions()"
-          formControlName="type"
-        />
-      </div>
-
-      <div class="col-2">
-        @if (showPropertySelector[$index]) {
-          <app-select-filter
-            [options]="getPropertySuggestions($index)"
-            formControlName="property"
-          />
-        } @else {
+  <p-card class="mb-2">
+    @for (control of formArray.controls; track $index) {
+      <div class="row justify-content-between mb-2">
+        <div class="col-auto">
+          <h5>
+            {{ $index + 1 }}. Step:
+            {{ control.get('type')?.value || 'Unnamed step' }}
+            <i class="pi pi-pencil"></i>
+          </h5>
+        </div>
+        <div class="col-auto">
           <p-button
-            icon="pi pi-plus"
-            label="Add an event attribute"
-            link
-            (onClick)="onShowPropertySelector($index)"
-            class="w-100"
+            icon="pi pi-trash"
+            aria-label="Save"
+            severity="primary"
+            class="me-2"
+            (onClick)="onRemove($index)"
+            [disabled]="formArray.length === 1"
           />
+          <p-button icon="pi pi-clone" aria-label="Save" severity="secondary" />
+        </div>
+      </div>
+      <div class="row mb-3" [formGroup]="control">
+        <div class="col-lg-2 col-md-2 col-sm-12 mb-2">
+          <app-select-filter
+            [options]="eventTypeSuggestions()"
+            formControlName="type"
+          />
+        </div>
+
+        @if (control.get('type')?.value) {
+          @if (showPropertySelector[$index]) {
+            <div class="col-lg-2 col-md-2 col-sm-12 mb-2">
+              <app-select-filter
+                [options]="getPropertySuggestions($index)"
+                formControlName="property"
+              />
+            </div>
+          } @else {
+            <div class="col-lg-3 col-md-3 col-sm-12 mb-2">
+              <p-button
+                icon="pi pi-plus"
+                label="Add an event attribute"
+                link
+                (onClick)="onShowPropertySelector($index)"
+                class="w-100"
+              />
+            </div>
+          }
+        }
+
+        @if (showPropertySelector[$index] === true) {
+          <div class="col-6">
+            <app-compare formControlName="compare" />
+          </div>
         }
       </div>
 
-      @if (showPropertySelector[$index] === true) {
-        <div class="col-6">
-          <app-compare formControlName="compare" />
-        </div>
-      }
+      <p-divider />
 
+      <div class="row mb-2">
+        <div class="col text-center">
+          <p-button
+            icon="pi pi-plus"
+            label="Add funnel list"
+            (onClick)="onAdd()"
+            link
+          />
+        </div>
+      </div>
+    }
+  </p-card>
+
+  <div class="row">
+    <div class="col">
       <p-button
-        icon="pi pi-trash"
-        label="Delete"
-        severity="danger"
-        (onClick)="onRemove($index)"
-        [disabled]="formArray.length === 1"
+        label="Apply Filters"
+        (onClick)="onApplyFilters()"
+        severity="success"
       />
     </div>
-  }
-
-  <p-button label="+ Add Filter" (onClick)="onAdd()" />
-  <p-button
-    label="Apply Filters"
-    (onClick)="onApplyFilters()"
-    severity="success"
-  />
+  </div>
 </form>
 
 <pre>{{ formArray.value | json }}</pre>

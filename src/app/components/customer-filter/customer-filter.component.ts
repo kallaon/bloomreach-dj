@@ -83,6 +83,8 @@ import {
   ReactiveFormsModule,
 } from '@angular/forms';
 import { ButtonModule } from 'primeng/button';
+import { CardModule } from 'primeng/card';
+import { DividerModule } from 'primeng/divider';
 import { distinctUntilChanged, take } from 'rxjs';
 import { Event, EventsResponse } from '../../models';
 import { DataService } from '../../services/data-service/data-service';
@@ -97,6 +99,8 @@ import { SelectFilterComponent } from '../select-filter/select-filter.component'
     CompareComponent,
     SelectFilterComponent,
     JsonPipe,
+    CardModule,
+    DividerModule,
   ],
   templateUrl: './customer-filter.component.html',
 })

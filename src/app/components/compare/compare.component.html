@@ -1,2 +1,28 @@
-<p>compare works!</p>
-<app-select-group name="'Comparer'" [formControlName]="'comparer'" [groupedItems]="groupedItems">
+<form [formGroup]="form" class="row g-2">
+  <div class="col-auto">
+    <app-select-group formControlName="comparer" [groupedItems]="groupedItems">
+    </app-select-group>
+  </div>
+
+  @if (isNumberType() && !isInBetween()) {
+    <div class="col-auto">
+      <p-inputnumber inputId="value" formControlName="value" />
+    </div>
+  }
+
+  @if (isInBetween()) {
+    <div class="col-auto">
+      <div class="d-flex align-items-center gap-2">
+        <p-inputnumber inputId="valueFrom" formControlName="valueFrom" />
+        <span>AND</span>
+        <p-inputnumber inputId="valueTo" formControlName="valueTo" />
+      </div>
+    </div>
+  }
+
+  @if (isStringType()) {
+    <div class="col-auto">
+      <input pInputText type="text" id="stringValue" formControlName="value" />
+    </div>
+  }
+</form>

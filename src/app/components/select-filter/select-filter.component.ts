@@ -7,20 +7,22 @@ import {
 import { SelectModule } from 'primeng/select';
 
 @Component({
-  selector: 'app-select-group',
+  selector: 'app-select-filter',
   imports: [SelectModule, FormsModule],
-  templateUrl: './select-group.component.html',
+  templateUrl: './select-filter.component.html',
   providers: [
     {
       provide: NG_VALUE_ACCESSOR,
-      useExisting: forwardRef(() => SelectGroupComponent),
+      useExisting: forwardRef(() => SelectFilterComponent),
       multi: true,
     },
   ],
 })
-export class SelectGroupComponent implements ControlValueAccessor {
-  @Input() groupedItems: any[] = [];
-  @Input() group: boolean = true;
+export class SelectFilterComponent implements ControlValueAccessor {
+  @Input() options: any[] = [];
+  @Input() optionLabel: string = 'value';
+  @Input() filterBy: string = 'value';
+  @Input() optionValue: string = 'value';
 
   value: any = null;
   disabled: boolean = false;

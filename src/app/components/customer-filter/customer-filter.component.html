@@ -1,6 +1,51 @@
-<p>customer-filter works!</p>
+<form>
+  @for (control of formArray.controls; track $index) {
+    <div class="row mb-3" [formGroup]="control">
+      <div class="col-2">
+        <app-select-filter
+          [options]="eventTypeSuggestions()"
+          formControlName="type"
+        />
+      </div>
 
-<app-compare />
+      <div class="col-2">
+        @if (showPropertySelector[$index]) {
+          <app-select-filter
+            [options]="getPropertySuggestions($index)"
+            formControlName="property"
+          />
+        } @else {
+          <p-button
+            label="+ Add an event attribute"
+            link
+            (onClick)="onShowPropertySelector($index)"
+            class="w-100"
+          />
+        }
+      </div>
 
+      @if (showPropertySelector[$index] === true) {
+        <div class="col-6">
+          <app-compare formControlName="compare" />
+        </div>
+      }
 
-<p-button label="Apply filters" (onClick)="onApplyFilters()"/>
+      <p-button
+        icon="pi pi-trash"
+        label="Delete"
+        severity="danger"
+        (onClick)="onRemove($index)"
+        [disabled]="formArray.length === 1"
+      />
+    </div>
+  }
+
+  <p-button label="+ Add Filter" (onClick)="onAdd()" />
+  <p-button
+    label="Apply Filters"
+    (onClick)="onApplyFilters()"
+    severity="success"
+  />
+</form>
+
+<pre>{{ formArray.value | json }}</pre>

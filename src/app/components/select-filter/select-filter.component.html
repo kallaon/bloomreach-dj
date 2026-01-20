@@ -1,0 +1,18 @@
+<p-select
+  [(ngModel)]="value"
+  (ngModelChange)="onValueChange($event)"
+  [options]="options"
+  [disabled]="disabled"
+  [optionLabel]="optionLabel"
+  [optionValue]="optionValue"
+  [filter]="true"
+  [filterBy]="filterBy"
+  [showClear]="true"
+  class="w-100"
+>
+  <ng-template let-item #item>
+    <div class="flex items-center gap-2">
+      <div>{{ item.value }}</div>
+    </div>
+  </ng-template>
+</p-select>

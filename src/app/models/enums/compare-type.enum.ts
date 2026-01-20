@@ -5,10 +5,14 @@ export enum CompareTypeString {
   DOES_NOT_CONTAIN = 'does_not_contain',
 }
 
-
 export enum CompareTypeNumber {
   EQUALS_TO = 'equals_to',
   IN_BETWEEN = 'in_between',
   LESS_THAN = 'less_than',
   GREATER_THAN = 'greater_than',
+}
+
+export enum CompareType {
+  STRING = 'string',
+  NUMBER = 'number',
 }

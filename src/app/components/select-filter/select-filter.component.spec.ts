@@ -1,18 +1,18 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 
-import { Autocomplete } from './autocomplete.component';
+import { SelectFilterComponent } from './select-filter.component';
 
-describe('Autocomplete', () => {
-  let component: Autocomplete;
-  let fixture: ComponentFixture<Autocomplete>;
+describe('SelectFilterComponent', () => {
+  let component: SelectFilterComponent;
+  let fixture: ComponentFixture<SelectFilterComponent>;
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [Autocomplete]
+      imports: [SelectFilterComponent]
     })
     .compileComponents();
 
-    fixture = TestBed.createComponent(Autocomplete);
+    fixture = TestBed.createComponent(SelectFilterComponent);
     component = fixture.componentInstance;
     await fixture.whenStable();
   });

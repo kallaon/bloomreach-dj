@@ -1,8 +1,14 @@
-<p-select formControlName="formControlName" [options]="groupedItems" [group]="group" class="w-full md:w-56">
-        <ng-template let-group #group>
-            <div class="flex items-center">
-                <!-- <img src="https://primefaces.org/cdn/primeng/images/demo/flag/flag_placeholder.png" [class]="'mr-2 flag flag-' + group.value" style="width: 20px" /> -->
-                <span>{{ group.label }}</span>
-            </div>
-        </ng-template>
-    </p-select>
+<p-select
+  [(ngModel)]="value"
+  (ngModelChange)="onValueChange($event)"
+  [options]="groupedItems"
+  [group]="group"
+  [disabled]="disabled"
+  class="w-100"
+>
+  <ng-template let-group #group>
+    <div class="flex items-center">
+      <span>{{ group.label }}</span>
+    </div>
+  </ng-template>
+</p-select>

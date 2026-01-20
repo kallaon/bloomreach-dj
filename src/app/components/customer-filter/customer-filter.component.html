@@ -1,10 +1,11 @@
 <form>
   <p-card class="mb-2">
-    @for (control of formArray.controls; track $index) {
+    @for (control of formArray.controls; track stepIdx; let stepIdx = $index) {
+      <!-- header karty -->
       <div class="row justify-content-between mb-2">
         <div class="col-auto">
           <h5>
-            {{ $index + 1 }}. Step:
+            {{ stepIdx + 1 }}. Step:
             {{ control.get('type')?.value || 'Unnamed step' }}
             <i class="pi pi-pencil"></i>
           </h5>
@@ -13,66 +14,95 @@
         <div class="col-auto">
           <p-button
             icon="pi pi-trash"
-            aria-label="Save"
-            severity="primary"
+            aria-label="Delete"
+            severity="danger"
             class="me-2"
-            (onClick)="onRemove($index)"
+            (onClick)="onRemove(stepIdx)"
             [disabled]="formArray.length === 1"
           />
 
           <p-button
             icon="pi pi-clone"
-            aria-label="Save"
+            aria-label="Clone"
             severity="secondary"
-            (onClick)="onClone($index)"
+            (onClick)="onClone(stepIdx)"
           />
         </div>
       </div>
 
-      <div class="row mb-3" [formGroup]="control">
-        <div class="col-lg-2 col-md-2 col-sm-12 mb-2">
-          <app-select-filter
-            [options]="eventTypeSuggestions()"
-            formControlName="type"
-          />
-        </div>
-
-        @if (control.get('type')?.value) {
-          @if (showPropertySelector[$index]) {
-            <div class="col-lg-2 col-md-2 col-sm-12 mb-2">
-              <app-select-filter
-                [options]="getPropertySuggestions($index)"
-                formControlName="property"
-              />
-            </div>
-          } @else {
-            <div class="col-lg-3 col-md-3 col-sm-12 mb-2">
-              <p-button
-                icon="pi pi-plus"
-                label="Add an event attribute"
-                link
-                (onClick)="onShowPropertySelector($index)"
-                class="w-100"
-              />
-            </div>
-          }
-        }
-
-        @if (showPropertySelector[$index] === true) {
-          <div class="col-6">
-            <app-compare formControlName="compare" />
+      <div [formGroup]="control">
+        <div class="row">
+          <!-- Typ -->
+          <div class="col-lg-3 col-md-4 col-sm-12 mb-3">
+            <app-select-filter
+              [options]="eventTypeSuggestions()"
+              formControlName="type"
+            />
           </div>
-        }
+
+          <div class="col-lg-9 col-md-8 col-sm-12">
+            <!-- ak mám value z typu -->
+            @if (control.get('type')?.value) {
+              <div formArrayName="properties">
+                <!-- cyklujem cez properties -->
+                @for (
+                  propertyControl of getPropertiesArray(stepIdx).controls;
+                  track propertyIdx;
+                  let propertyIdx = $index
+                ) {
+                  <div class="row mb-3" [formGroupName]="propertyIdx">
+                    <!-- vyberiem property -->
+                    <div class="col-lg-3 col-md-4 col-sm-12 mb-2">
+                      <app-select-filter
+                        [options]="
+                          getPropertySuggestions(control.get('type')?.value)
+                        "
+                        formControlName="property"
+                      />
+                    </div>
+                    <!-- vyberiem compare -->
+                    <div class="col-lg-7 col-md-6 col-sm-12 mb-2">
+                      <app-compare formControlName="compare" />
+                    </div>
+                    <!-- ak neni prvy nemozem mazat -->
+                    @if (!$first) {
+                      <div class="col-lg-2 col-md-2 col-sm-12 mb-2">
+                        <p-button
+                          icon="pi pi-times"
+                          aria-label="Delete property"
+                          severity="secondary"
+                          (onClick)="onRemoveProperty(stepIdx, propertyIdx)"
+                        />
+                      </div>
+                    }
+                  </div>
+                }
+              </div>
+              <!-- pridat dalsi riadok filtrov -->
+              <div class="row mb-3">
+                <div class="col">
+                  <p-button
+                    icon="pi pi-plus"
+                    label="Add property filter"
+                    link
+                    (onClick)="onAddProperty(stepIdx)"
+                  />
+                </div>
+              </div>
+            }
+          </div>
+        </div>
       </div>
 
       <p-divider />
 
+      <!-- ak je posledny mozem pridat komplente novy filter -->
       @if ($last) {
         <div class="row mb-2">
           <div class="col text-center">
             <p-button
               icon="pi pi-plus"
-              label="Add funnel list"
+              label="Add funnel step"
               (onClick)="onAdd()"
               link
             />
@@ -82,6 +112,7 @@
     }
   </p-card>
 
+  <!-- vypisem vsetky filtre -->
   <div class="row">
     <div class="col">
       <p-button
@@ -92,5 +123,3 @@
     </div>
   </div>
 </form>
-
-<pre>{{ formArray.value | json }}</pre>

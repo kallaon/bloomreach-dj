@@ -1,4 +1,3 @@
-import { JsonPipe } from '@angular/common';
 import { Component, inject, OnDestroy, OnInit, signal } from '@angular/core';
 import {
   FormArray,
@@ -10,7 +9,12 @@ import { ButtonModule } from 'primeng/button';
 import { CardModule } from 'primeng/card';
 import { DividerModule } from 'primeng/divider';
 import { distinctUntilChanged, Subject, take, takeUntil } from 'rxjs';
-import { Event, EventsResponse } from '../../models';
+import {
+  Event,
+  EventsResponse,
+  PropertySuggestion,
+  TypeSuggestion,
+} from '../../models';
 import { DataService } from '../../services/data-service/data-service';
 import { CompareComponent } from '../compare/compare.component';
 import { SelectFilterComponent } from '../select-filter/select-filter.component';
@@ -22,7 +26,6 @@ import { SelectFilterComponent } from '../select-filter/select-filter.component'
     ButtonModule,
     CompareComponent,
     SelectFilterComponent,
-    JsonPipe,
     CardModule,
     DividerModule,
   ],
@@ -30,12 +33,14 @@ import { SelectFilterComponent } from '../select-filter/select-filter.component'
 })
 export class CustomerFilter implements OnInit, OnDestroy {
   protected eventData = signal<Event[]>([]);
-  protected eventTypeSuggestions = signal<any[]>([]);
-  protected formArray = new FormArray<FormGroup>([]);
-  protected showPropertySelector: boolean[] = [];
-  protected propertySuggestionsCache: Map<number, any[]> = new Map();
+  protected eventTypeSuggestions = signal<TypeSuggestion[]>([]);
 
-  private _propertyOptionsByType = new Map<string, any[]>();
+  // hlavný FormArray obsahujúci všetky filter kroky
+  protected formArray = new FormArray<FormGroup>([]);
+
+  // cache pre property suggestions podľa event type
+  private _propertyOptionsByType = new Map<string, PropertySuggestion[]>();
+
   private readonly _dataService = inject(DataService);
   private readonly _destroy$ = new Subject<void>();
 
@@ -49,98 +54,98 @@ export class CustomerFilter implements OnInit, OnDestroy {
     this._destroy$.complete();
   }
 
-  getPropertySuggestions(index: number): any[] {
-    return this.propertySuggestionsCache.get(index) || [];
+  // vráti property suggestions pre daný event type
+  getPropertySuggestions(eventType: string): PropertySuggestion[] {
+    return this._propertyOptionsByType.get(eventType) || [];
   }
 
+  // pridá nový filter step (event type + jeho properties)
   onAdd() {
     const filterGroup = new FormGroup({
       type: new FormControl(),
-      property: new FormControl({ value: null, disabled: true }),
+      properties: new FormArray<FormGroup>([]),
+    });
+
+    this.setupTypeListener(filterGroup);
+    this.formArray.push(filterGroup);
+  }
+
+  // pridá nový property filter do existujúceho stepu
+  onAddProperty(stepIndex: number) {
+    const step = this.formArray.at(stepIndex);
+    const propertiesArray = step.get('properties') as FormArray;
+
+    const propertyGroup = new FormGroup({
+      property: new FormControl(),
       compare: new FormControl(),
     });
 
-    const currentIndex = this.formArray.length;
-    this.setupTypeListener(filterGroup, currentIndex);
-
-    this.formArray.push(filterGroup);
-    this.showPropertySelector.push(false);
+    propertiesArray.push(propertyGroup);
   }
 
-  onClone(index: number): void {
+  // odstráni konkrétny property filter z daného stepu
+  onRemoveProperty(stepIndex: number, propertyIndex: number) {
+    const step = this.formArray.at(stepIndex);
+    const propertiesArray = step.get('properties') as FormArray;
+    propertiesArray.removeAt(propertyIndex);
+  }
+
+  // odstráni celý filter step
+  onRemove(index: number) {
+    this.formArray.removeAt(index);
+  }
+
+  // naklonuje existujúci filter step vrátane všetkých jeho property filtrov
+  onClone(index: number) {
     const controlToClone = this.formArray.at(index);
     const clonedValue = controlToClone.value;
 
+    // vytvor nový FormGroup s rovnakými hodnotami
     const newFormGroup = new FormGroup({
       type: new FormControl(clonedValue.type),
-      property: new FormControl({
-        value: clonedValue.property,
-        disabled: !clonedValue.type,
-      }),
-      compare: new FormControl(clonedValue.compare),
+      properties: new FormArray<FormGroup>([]),
     });
 
-    const newIndex = index + 1;
+    // naklonuj všetky property filtre
+    clonedValue.properties?.forEach((prop: any) => {
+      const propertyGroup = new FormGroup({
+        property: new FormControl(prop.property),
+        compare: new FormControl(prop.compare),
+      });
+      (newFormGroup.get('properties') as FormArray).push(propertyGroup);
+    });
 
-    const eventType = clonedValue.type;
-    if (eventType) {
-      const suggestions = this._propertyOptionsByType.get(eventType) || [];
-      this.propertySuggestionsCache.set(newIndex, suggestions);
-    }
-
-    this.showPropertySelector.splice(
-      newIndex,
-      0,
-      this.showPropertySelector[index] || false,
-    );
-
-    this.setupTypeListener(newFormGroup, newIndex);
-    this.formArray.insert(newIndex, newFormGroup);
+    // setup listener pre type changes a vlož za originál
+    this.setupTypeListener(newFormGroup);
+    this.formArray.insert(index + 1, newFormGroup);
   }
 
-  onShowPropertySelector(index: number) {
-    if (this.propertySuggestionsCache.has(index)) {
-      this.showPropertySelector[index] = true;
-    }
-  }
-
-  onRemove(index: number) {
-    this.formArray.removeAt(index);
-    this.showPropertySelector.splice(index, 1);
-    this.propertySuggestionsCache.delete(index);
-  }
-
+  // handler pre submit - zatiaľ len loguje do konzoly
   onApplyFilters() {
     console.log('Filters applied:', this.formArray.value);
   }
 
-  private setupTypeListener(
-    formGroup: FormGroup,
-    index: number,
-    skipInitialReset = false,
-  ) {
+  // helper metóda pre získanie properties FormArray z konkrétného stepu
+  getPropertiesArray(stepIndex: number): FormArray {
+    return this.formArray.at(stepIndex).get('properties') as FormArray;
+  }
+
+  // nastaví listener na zmenu event type ak sa zmeni tak premazem property
+  private setupTypeListener(formGroup: FormGroup) {
     formGroup
       .get('type')
       ?.valueChanges.pipe(distinctUntilChanged(), takeUntil(this._destroy$))
       .subscribe((eventType) => {
-        const property = formGroup.get('property');
+        const propertiesArray = formGroup.get('properties') as FormArray;
 
-        if (eventType) {
-          const suggestions = this._propertyOptionsByType.get(eventType) || [];
-          this.propertySuggestionsCache.set(index, suggestions);
-          property?.enable();
-        } else {
-          property?.disable();
-          this.propertySuggestionsCache.delete(index);
-        }
-
-        if (!skipInitialReset) {
-          property?.setValue(null);
-          this.showPropertySelector[index] = false;
+        // ak user vymaže type, vyčistí všetky property filtre
+        if (!eventType) {
+          propertiesArray.clear();
         }
       });
   }
 
+  // načíta autocomplete dáta z JSON súboru
   private _loadAutocompleteData() {
     this._dataService
       .getData<EventsResponse>('customer-events/events.json')
@@ -148,12 +153,14 @@ export class CustomerFilter implements OnInit, OnDestroy {
       .subscribe((data) => {
         this.eventData.set(data.events);
 
+        // vytvor unikátne event type suggestions
         this.eventTypeSuggestions.set(
           [...new Set(data.events.map((e) => e.type))].map((type) => ({
             value: type,
           })),
         );
 
+        // vytvor property suggestions cache pre každý event type
         data.events.forEach((event) => {
           const suggestions = event.properties.map((prop) => ({
             value: prop.property,
